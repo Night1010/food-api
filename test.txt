@@ -1,0 +1,77 @@
+package main
+
+import (
+	"errors"
+	"net/http"
+
+	"github.com/gin-gonic/gin"
+)
+
+type food struct {
+	ID        string `json: "id"`
+	Name      string `json: "name"`
+	Available bool   `json: "available"`
+}
+
+var foods = []food{
+	{ID: "1", Name: "Burger", Available: true},
+	{ID: "2", Name: "Chips", Available: true},
+	{ID: "3", Name: "Hotdog", Available: false},
+}
+
+func getFoods(context *gin.Context) {
+	context.IndentedJSON(http.StatusOK, foods)
+}
+
+func getFood(context *gin.Context) {
+	id := context.Param("id")
+	food, err := getFoodsByID(id)
+
+	if err != nil {
+		context.IndentedJSON(http.StatusNotFound, gin.H{"message": "Food not found"})
+	}
+
+	context.IndentedJSON(http.StatusOK, food)
+}
+
+func updateStatusFood(context *gin.Context) {
+	id := context.Param("id")
+	food, err := getFoodsByID(id)
+
+	if err != nil {
+		context.IndentedJSON(http.StatusNotFound, gin.H{"message": "Food not found"})
+		return
+	}
+	food.Available = !food.Available
+
+	context.IndentedJSON(http.StatusOK, food)
+}
+
+func getFoodsByID(id string) (*food, error) {
+	for i, food := range foods {
+		if food.ID == id {
+			return &foods[i], nil
+		}
+	}
+	return nil, errors.New("Food not found")
+}
+
+func addFoods(context *gin.Context) {
+	var newFood food
+
+	if err := context.BindJSON(&newFood); err != nil {
+		return
+	}
+	foods = append(foods, newFood)
+
+	context.IndentedJSON(http.StatusCreated, newFood)
+}
+
+func main() {
+	router := gin.Default()
+	router.GET("/foods", getFoods)
+	router.GET("/foods/:id", getFood)
+	router.PATCH("/foods/:id", updateStatusFood)
+	router.POST("/foods", addFoods)
+	router.Run("localhost:9090")
+}
